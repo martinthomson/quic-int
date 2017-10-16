@@ -127,7 +127,7 @@ void validate(const char *name) {
     fprintf(stderr, "%s: decoded value doesn't match original value\n", name);
     fprintf(stderr, "Integers:");
     for (size_t i = 0; i < integer_count; ++i) {
-      fprintf(stderr, " %16.16llx", integers[i]);
+      fprintf(stderr, " %16.16" PRIx64, integers[i]);
     }
     fprintf(stderr, "\n");
     fprintf(stderr, "Encoded:");
@@ -137,7 +137,7 @@ void validate(const char *name) {
     fprintf(stderr, "\n");
     fprintf(stderr, "Decoded:");
     for (size_t i = 0; i < integer_count; ++i) {
-      fprintf(stderr, " %16.16llx", decoded[i]);
+      fprintf(stderr, " %16.16" PRIx64, decoded[i]);
     }
     fprintf(stderr, "\n");
     exit(1);
