@@ -2,6 +2,7 @@
 #include <endian.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -233,14 +234,14 @@ ENCODE(quic) {
     if (integers[i] < 0x40) {
       *c++ = integers[i];
     } else if (integers[i] < (0x40 << 8)) {
-      *c++ = 0x40 | integers[i] >> 8;
+      *c++ = (1U << 6) | integers[i] >> 8;
       *c++ = integers[i] & 0xff;
     } else if (integers[i] < (0x40 << 24)) {
-      uint32_t v = htobe32((0x80UL << 24) | integers[i]);
+      uint32_t v = htobe32((2UL << 30) | integers[i]);
       memcpy(c, &v, 4);
       c += 4;
     } else {
-      uint64_t v = htobe64((0xc0ULL << 56) | integers[i]);
+      uint64_t v = htobe64((3ULL << 62) | integers[i]);
       memcpy(c, &v, 8);
       c += 8;
     }
@@ -266,6 +267,56 @@ DECODE(quic) {
       decoded[i] = be64toh(v) & 0x3fffffffffffffffULL;
       c += 8;
     }
+  }
+}
+
+// Take the stream ID type from the low two bits of the value.
+ENCODE(streamid) {
+  uint8_t* c = buffer;
+  for (size_t i = 0; i < integer_count; ++i) {
+    uint64_t v = integers[i];
+    uint64_t type = v & 0x3;
+    v >>= 2;
+    if (v < 0x10) {
+      *c++ = (type << 6) | v;
+    } else if (v < (0x10 << 8)) {
+      *c++ = (type << 6) | 0x10 | v >> 8;
+      *c++ = v & 0xff;
+    } else if (v < (0x10 << 24)) {
+      uint32_t v32 = htobe32((type << 30) | (2UL << 28) | v);
+      memcpy(c, &v32, 4);
+      c += 4;
+    } else {
+      uint64_t v64 = htobe64((type << 62) | (3ULL << 60) | v);
+      memcpy(c, &v64, 8);
+      c += 8;
+    }
+  }
+}
+
+DECODE(streamid) {
+  uint8_t* c = buffer;
+  for (size_t i = 0; i < integer_count; ++i) {
+    uint8_t type = *c >> 6;
+    uint8_t s = *c & 0x30;
+    if (s == 0) {
+      decoded[i] = *c++ & 0xf;
+    } else if (s == 0x10) {
+      decoded[i] = (*c++ & 0xf) << 8;
+      decoded[i] |= *c++;
+    } else if (s == 0x20) {
+      uint32_t v;
+      memcpy(&v, c, 4);
+      decoded[i] = be32toh(v) & 0xfffffffUL;
+      c += 4;
+    } else {
+      uint64_t v;
+      memcpy(&v, c, 8);
+      decoded[i] = be64toh(v) & 0xfffffffffffffffULL;
+      c += 8;
+    }
+    decoded[i] <<= 2;
+    decoded[i] |= type;
   }
 }
 
@@ -331,5 +382,6 @@ int main(int argc, char **argv) {
   BENCHMARK(highbitbe);
   BENCHMARK(highbitle);
   BENCHMARK(quic);
+  BENCHMARK(streamid);
   cleanup();
 }
