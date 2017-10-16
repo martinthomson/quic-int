@@ -331,8 +331,8 @@ DECODE(streamid) {
   } while (0)
 
 void usage(const char *n) {
-  fprintf(stderr, "Usage: %s [t|r|c] [#integers=%zd] [#iterations=%zd]\n",
-          n, integer_count, iterations);
+  fprintf(stderr, "Usage: %s [t|r|c] [#integers=%zd] [#iterations=%zd]\n", n,
+          integer_count, iterations);
   exit(2);
 }
 
