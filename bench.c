@@ -236,44 +236,45 @@ DECODE(highbitle) {
   }
 }
 
-static const uint64_t quic_types[4] = {
-  0ULL, 1ULL << 14, 2ULL << 30, 3ULL << 62
-};
-
 ENCODE(quic) {
   uint8_t* c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
-    uint64_t v = integers[i];
-    uint64_t s;
-    if (integers[i] >> 30) {
-      s = 3;
-    } else if (integers[i] >> 14) {
-      s = 2;
-    } else if (integers[i] >> 6) {
-      s = 1;
+    if (integers[i] < 0x40) {
+      *c++ = integers[i];
+    } else if (integers[i] < (0x40 << 8)) {
+      *c++ = 0x40 | integers[i] >> 8;
+      *c++ = integers[i] & 0xff;
+    } else if (integers[i] < (0x40 << 24)) {
+      uint32_t v = htobe32((0x80UL << 24) | integers[i]);
+      memcpy(c, &v, 4);
+      c += 4;
     } else {
-      s = 0;
+      uint64_t v = htobe64((0xc0ULL << 56) | integers[i]);
+      memcpy(c, &v, 8);
+      c += 8;
     }
-    size_t l = 1 << s;
-    v = htobe64(integers[i] | quic_types[s]);
-    memcpy(c, ((uint8_t *)&v) + sizeof(v) - l, l);
-    c += l;
   }
 }
-
-static const uint64_t quic_type_mask[4] = {
-  ~0ULL, ~(1ULL << 14), ~(2ULL << 30), ~(3ULL << 62)
-};
 
 DECODE(quic) {
   uint8_t* c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
-    uint64_t s = *c >> 6;
-    size_t l = 1 << s;
-    uint64_t v = 0;
-    memcpy(((uint8_t *)&v) + sizeof(v) - l, c, l);
-    decoded[i] = be64toh(v) & quic_type_mask[s];
-    c += l;
+    if (*c < 0x40) {
+      decoded[i] = *c++;
+    } else if (*c < 0x80) {
+      decoded[i] = (*c++ & 0x3f) << 8;
+      decoded[i] |= *c++;
+    } else if (*c < 0xc0) {
+      uint32_t v;
+      memcpy(&v, c, 4);
+      decoded[i] = be32toh(v) & 0x3fffffffUL;
+      c += 4;
+    } else {
+      uint64_t v;
+      memcpy(&v, c, 8);
+      decoded[i] = be64toh(v) & 0x3fffffffffffffffULL;
+      c += 8;
+    }
   }
 }
 
