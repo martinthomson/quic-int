@@ -170,7 +170,6 @@ DECODE(endian) {
 
 ENCODE(highbitbe) {
   uint8_t *c = buffer;
-  uint8_t tmp[9];
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = integers[i];
     size_t j = 56;
@@ -199,7 +198,6 @@ DECODE(highbitbe) {
 
 ENCODE(highbitle) {
   uint8_t *c = buffer;
-  uint8_t tmp[9];
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = integers[i];
     *c = v & 0x7f;
@@ -323,7 +321,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
   benchmark_floor = measure_calibrate();
-  printf("Encoding and decoding %d integers over %d iterations\n",
+  printf("Encoding and decoding %zd integers over %zd iterations\n",
          integer_count, iterations);
   printf("--- Type ---\t Encode \t Decode\n");
   BENCHMARK(memcpy);
