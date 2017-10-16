@@ -22,7 +22,10 @@
 #endif // _MSC_VER
 
 size_t integer_count = 10000;
-const size_t iterations = 5000;
+#ifndef ITERATIONS
+#define ITERATIONS 2000
+#endif
+const size_t iterations = ITERATIONS;
 
 uint64_t* integers;
 size_t integers_size;
@@ -106,21 +109,20 @@ static uint32_t hires_time() {
 }
 
 uint32_t benchmark_floor = 0;
-#define MEASURE(_name) \
-  void _run_##_name(); \
-  uint32_t measure_##_name() { \
-    uint32_t tmin = UINT32_MAX; \
-    for (size_t i = 0; i < iterations; ++i) { \
-      uint32_t t0 = hires_time(); \
-      _run_##_name(); \
-      uint32_t t1 = hires_time(); \
-      if (tmin > t1 - t0 - benchmark_floor) { \
-        tmin = t1 - t0 - benchmark_floor; \
-      } \
-    } \
-    printf(#_name ": %d cycles\n", tmin); \
-    return tmin; \
-  } \
+#define MEASURE(_name)                          \
+  void _run_##_name();                          \
+  uint32_t measure_##_name() {                  \
+    uint32_t tmin = UINT32_MAX;                 \
+    for (size_t i = 0; i < iterations; ++i) {   \
+      uint32_t t0 = hires_time();               \
+      _run_##_name();                           \
+      uint32_t t1 = hires_time();               \
+      if (tmin > t1 - t0 - benchmark_floor) {   \
+        tmin = t1 - t0 - benchmark_floor;       \
+      }                                         \
+    }                                           \
+    return tmin;                                \
+  }                                             \
   inline void _run_##_name()
 
 MEASURE(calibrate) {}
@@ -275,33 +277,46 @@ DECODE(quic) {
   }
 }
 
-#define BENCHMARK(_name) \
-   printf(#_name ": running\n"); \
-   memset(buffer, 0, buffer_size); \
-   memset(decoded, 0, integers_size); \
-   (void)measure_encode_##_name(); \
-   (void)measure_decode_##_name(); \
-   validate(#_name)
+#define BENCHMARK(_name) do {                                           \
+    memset(buffer, 0, buffer_size);                                     \
+    memset(decoded, 0, integers_size);                                  \
+    uint32_t enc = measure_encode_##_name();                            \
+    uint32_t dec = measure_decode_##_name();                            \
+    validate(#_name);                                                   \
+    printf("%-12s\t%8d\t%8d\n", #_name ":", enc, dec); \
+  } while(0)
+
+void usage(const char* n) {
+  fprintf(stderr, "Usage: %s [t|r|c] [#integers]\n", n);
+  exit(2);
+}
 
 int main(int argc, char** argv) {
   mode m = trimmed;
-  if (argc >= 2 && !strcmp(argv[1], "-r")) {
-    m = randomized;
-    --argc;
-    ++argv;
+  if (argc >= 2) {
+    switch (argv[1][0]) {
+      case 't': m = trimmed; break;
+      case 'r': m = randomized; break;
+      case 'c': m = counting; break;
+      default: usage(argv[0]);
+    }
   }
-  if (argc >= 2 && !strcmp(argv[1], "-c")) {
-    m = counting;
-    --argc;
-    ++argv;
+  if (argc >= 3) {
+    char* endptr;
+    integer_count = strtoull(argv[2], &endptr, 10);
+    if (endptr - argv[2] != strlen(argv[2])) {
+      usage(argv[0]);
+    }
   }
 
   if (!setup(m)) {
     fprintf(stderr, "Unable to setup: %d\n", errno);
+    exit(1);
   }
   benchmark_floor = measure_calibrate();
   printf("Encoding and decoding %d integers over %d iterations\n",
          integer_count, iterations);
+  printf("--- Type ---\t Encode \t Decode\n");
   BENCHMARK(memcpy);
   BENCHMARK(endian);
   BENCHMARK(highbitbe);
