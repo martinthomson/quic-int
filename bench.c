@@ -21,11 +21,8 @@
 #define be64toh(x) ntohll(x)
 #endif // _MSC_VER
 
-size_t integer_count = 10000;
-#ifndef ITERATIONS
-#define ITERATIONS 2000
-#endif
-const size_t iterations = ITERATIONS;
+size_t integer_count = 1000;
+size_t iterations = 1000;
 
 uint64_t *integers;
 size_t integers_size;
@@ -279,11 +276,12 @@ DECODE(quic) {
     uint32_t enc = measure_encode_##_name();                                   \
     uint32_t dec = measure_decode_##_name();                                   \
     validate(#_name);                                                          \
-    printf("%-12s\t%8d\t%8d\n", #_name ":", enc, dec);                         \
+    printf("%-12s\t%8" PRIu32 "\t%8" PRIu32 "\n", #_name ":", enc, dec);       \
   } while (0)
 
 void usage(const char *n) {
-  fprintf(stderr, "Usage: %s [t|r|c] [#integers]\n", n);
+  fprintf(stderr, "Usage: %s [t|r|c] [#integers=%zd] [#iterations=%zd]\n",
+          n, integer_count, iterations);
   exit(2);
 }
 
@@ -308,6 +306,14 @@ int main(int argc, char **argv) {
     char *endptr;
     integer_count = strtoull(argv[2], &endptr, 10);
     if (endptr - argv[2] != strlen(argv[2])) {
+      usage(argv[0]);
+    }
+  }
+
+  if (argc >= 4) {
+    char *endptr;
+    iterations = strtoull(argv[3], &endptr, 10);
+    if (endptr - argv[3] != strlen(argv[3])) {
       usage(argv[0]);
     }
   }

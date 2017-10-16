@@ -1,3 +1,4 @@
 *.swp
 *~
-/bench
+/bench64
+/bench32
