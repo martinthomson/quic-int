@@ -272,7 +272,7 @@ DECODE(quic) {
 
 // Take the stream ID type from the low two bits of the value.
 ENCODE(streamid) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = integers[i];
     uint64_t type = v & 0x3;
@@ -295,7 +295,7 @@ ENCODE(streamid) {
 }
 
 DECODE(streamid) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     uint8_t type = *c >> 6;
     uint8_t s = *c & 0x30;
