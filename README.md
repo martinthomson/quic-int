@@ -5,7 +5,7 @@ A little test program for benchmarking various forms of integer encoding.
 With randomized 62-bit inputs:
 
 ```
-$ ./bench r 1000
+$ ./bench64 r 1000
 Encoding and decoding 1000 integers over 2000 iterations
 --- Type ---     Encode          Decode
 memcpy:             1174             762
@@ -18,7 +18,7 @@ quic:               3597            3567
 With randomized inputs randomly trimmed to 6-, 14-, and 30-bit values:
 
 ```
-$ ./bench t 1000
+$ ./bench64 t 1000
 Encoding and decoding 1000 integers over 2000 iterations
 --- Type ---     Encode          Decode
 memcpy:              774             504
@@ -31,7 +31,7 @@ quic:               4875            3981
 With monotonically-increasing inputs (starting at 0):
 
 ```
-$ ./bench c 1000
+$ ./bench64 c 1000
 Encoding and decoding 1000 integers over 2000 iterations
 --- Type ---     Encode          Decode
 memcpy:             2052             256
