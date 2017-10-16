@@ -11,8 +11,8 @@
 #include <intrin.h>
 #pragma intrinsic(__rdtsc)
 
-#include <winsock2.h>
 #include <sys/param.h>
+#include <winsock2.h>
 #define htobe16(x) htons(x)
 #define be16toh(x) ntohs(x)
 #define htobe32(x) htonl(x)
@@ -27,15 +27,13 @@ size_t integer_count = 10000;
 #endif
 const size_t iterations = ITERATIONS;
 
-uint64_t* integers;
+uint64_t *integers;
 size_t integers_size;
-uint8_t* buffer;
+uint8_t *buffer;
 size_t buffer_size;
-uint64_t* decoded;
+uint64_t *decoded;
 
-typedef enum {
-  counting, randomized, trimmed
-} mode;
+typedef enum { counting, randomized, trimmed } mode;
 
 // Allocate a chunk of memory for integers, an encoded form of those integers,
 // and the decoded values.
@@ -63,7 +61,7 @@ bool setup(mode m) {
     return true;
   }
 
-  FILE* urandom = fopen("/dev/urandom", "r");
+  FILE *urandom = fopen("/dev/urandom", "r");
   if (!urandom) {
     return false;
   }
@@ -109,20 +107,20 @@ static uint32_t hires_time() {
 }
 
 uint32_t benchmark_floor = 0;
-#define MEASURE(_name)                          \
-  void _run_##_name();                          \
-  uint32_t measure_##_name() {                  \
-    uint32_t tmin = UINT32_MAX;                 \
-    for (size_t i = 0; i < iterations; ++i) {   \
-      uint32_t t0 = hires_time();               \
-      _run_##_name();                           \
-      uint32_t t1 = hires_time();               \
-      if (tmin > t1 - t0 - benchmark_floor) {   \
-        tmin = t1 - t0 - benchmark_floor;       \
-      }                                         \
-    }                                           \
-    return tmin;                                \
-  }                                             \
+#define MEASURE(_name)                                                         \
+  void _run_##_name();                                                         \
+  uint32_t measure_##_name() {                                                 \
+    uint32_t tmin = UINT32_MAX;                                                \
+    for (size_t i = 0; i < iterations; ++i) {                                  \
+      uint32_t t0 = hires_time();                                              \
+      _run_##_name();                                                          \
+      uint32_t t1 = hires_time();                                              \
+      if (tmin > t1 - t0 - benchmark_floor) {                                  \
+        tmin = t1 - t0 - benchmark_floor;                                      \
+      }                                                                        \
+    }                                                                          \
+    return tmin;                                                               \
+  }                                                                            \
   inline void _run_##_name()
 
 MEASURE(calibrate) {}
@@ -153,13 +151,9 @@ void validate(const char *name) {
 #define DECODE(_name) MEASURE(decode_##_name)
 
 // This version uses memcpy, which should be fast but not at all portable.
-ENCODE(memcpy) {
-  memcpy(buffer, integers, integers_size);
-}
+ENCODE(memcpy) { memcpy(buffer, integers, integers_size); }
 
-DECODE(memcpy) {
-  memcpy(decoded, buffer, integers_size);
-}
+DECODE(memcpy) { memcpy(decoded, buffer, integers_size); }
 
 // This swaps endianness, which should at least be portable.
 ENCODE(endian) {
@@ -178,7 +172,7 @@ DECODE(endian) {
 }
 
 ENCODE(highbitbe) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   uint8_t tmp[9];
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = integers[i];
@@ -195,7 +189,7 @@ ENCODE(highbitbe) {
 }
 
 DECODE(highbitbe) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = 0;
     while (*c & 0x80) {
@@ -207,7 +201,7 @@ DECODE(highbitbe) {
 }
 
 ENCODE(highbitle) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   uint8_t tmp[9];
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = integers[i];
@@ -224,7 +218,7 @@ ENCODE(highbitle) {
 }
 
 DECODE(highbitle) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     uint64_t v = 0;
     size_t j = 0;
@@ -237,7 +231,7 @@ DECODE(highbitle) {
 }
 
 ENCODE(quic) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     if (integers[i] < 0x40) {
       *c++ = integers[i];
@@ -257,7 +251,7 @@ ENCODE(quic) {
 }
 
 DECODE(quic) {
-  uint8_t* c = buffer;
+  uint8_t *c = buffer;
   for (size_t i = 0; i < integer_count; ++i) {
     if (*c < 0x40) {
       decoded[i] = *c++;
@@ -278,32 +272,40 @@ DECODE(quic) {
   }
 }
 
-#define BENCHMARK(_name) do {                                           \
-    memset(buffer, 0, buffer_size);                                     \
-    memset(decoded, 0, integers_size);                                  \
-    uint32_t enc = measure_encode_##_name();                            \
-    uint32_t dec = measure_decode_##_name();                            \
-    validate(#_name);                                                   \
-    printf("%-12s\t%8d\t%8d\n", #_name ":", enc, dec); \
-  } while(0)
+#define BENCHMARK(_name)                                                       \
+  do {                                                                         \
+    memset(buffer, 0, buffer_size);                                            \
+    memset(decoded, 0, integers_size);                                         \
+    uint32_t enc = measure_encode_##_name();                                   \
+    uint32_t dec = measure_decode_##_name();                                   \
+    validate(#_name);                                                          \
+    printf("%-12s\t%8d\t%8d\n", #_name ":", enc, dec);                         \
+  } while (0)
 
-void usage(const char* n) {
+void usage(const char *n) {
   fprintf(stderr, "Usage: %s [t|r|c] [#integers]\n", n);
   exit(2);
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   mode m = trimmed;
   if (argc >= 2) {
     switch (argv[1][0]) {
-      case 't': m = trimmed; break;
-      case 'r': m = randomized; break;
-      case 'c': m = counting; break;
-      default: usage(argv[0]);
+    case 't':
+      m = trimmed;
+      break;
+    case 'r':
+      m = randomized;
+      break;
+    case 'c':
+      m = counting;
+      break;
+    default:
+      usage(argv[0]);
     }
   }
   if (argc >= 3) {
-    char* endptr;
+    char *endptr;
     integer_count = strtoull(argv[2], &endptr, 10);
     if (endptr - argv[2] != strlen(argv[2])) {
       usage(argv[0]);
