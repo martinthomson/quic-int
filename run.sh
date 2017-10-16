@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -ex
 make
 ./bench64 "$@"
 ./bench32 "$@"
