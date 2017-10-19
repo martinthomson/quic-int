@@ -279,6 +279,41 @@ DECODE(quic) {
   }
 }
 
+// Warning: non-portable code.
+ENCODE(quicle) {
+  uint8_t *c = buffer;
+  for (size_t i = 0; i < integer_count; ++i) {
+    *(uint64_t *)c = integers[i] << 2;
+    if (integers[i] < 0x40) {
+      c++;
+    } else if (integers[i] < (0x40 << 8)) {
+      *c |= 1;
+      c += 2;
+    } else if (integers[i] < (0x40 << 24)) {
+      *c |= 2;
+      c += 4;
+    } else {
+      *c |= 3;
+      c += 8;
+    }
+  }
+  encoded_length = c - buffer;
+}
+
+DECODE(quicle) {
+  uint8_t *c = buffer;
+  for (size_t i = 0; i < integer_count; ++i) {
+    uint64_t v = *(uint64_t *)c;
+    uint8_t l = 1 << (v & 3);
+    // uint64_t mask = (1ULL << (8 * l - 2)) - 1;
+    // decoded[i] = (v >> 2) & mask;
+    static const uint64_t mask[] = {0x3fULL, 0x3fffULL, 0x3fffffffULL,
+                                    0x3fffffffffffffffULL};
+    decoded[i] = (v >> 2) & mask[v & 3];
+    c += l;
+  }
+}
+
 #define BENCHMARK(_name)                                                       \
   do {                                                                         \
     memset(buffer, 0, buffer_size);                                            \
@@ -342,5 +377,6 @@ int main(int argc, char **argv) {
   BENCHMARK(highbitbe);
   BENCHMARK(highbitle);
   BENCHMARK(quic);
+  BENCHMARK(quicle);
   cleanup();
 }
