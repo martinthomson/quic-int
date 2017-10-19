@@ -132,8 +132,12 @@ void validate(const char *name) {
     }
     fprintf(stderr, "\n");
     fprintf(stderr, "Encoded:");
-    for (size_t i = 0; i < buffer_size; ++i) {
-      fprintf(stderr, " %2.2x", buffer[i]);
+    if (encoded_length <= buffer_size) {
+      for (size_t i = 0; i < encoded_length; ++i) {
+        fprintf(stderr, " %2.2x", buffer[i]);
+      }
+    } else {
+      fprintf(stderr, " overflow");
     }
     fprintf(stderr, "\n");
     fprintf(stderr, "Decoded:");
