@@ -28,6 +28,7 @@ uint64_t *integers;
 size_t integers_size;
 uint8_t *buffer;
 size_t buffer_size;
+size_t encoded_length = 0;
 uint64_t *decoded;
 
 typedef enum { counting, randomized, trimmed } mode;
@@ -148,7 +149,10 @@ void validate(const char *name) {
 #define DECODE(_name) MEASURE(decode_##_name)
 
 // This version uses memcpy, which should be fast but not at all portable.
-ENCODE(memcpy) { memcpy(buffer, integers, integers_size); }
+ENCODE(memcpy) {
+  memcpy(buffer, integers, integers_size);
+  encoded_length = integer_count * sizeof(*integers);
+}
 
 DECODE(memcpy) { memcpy(decoded, buffer, integers_size); }
 
@@ -158,6 +162,7 @@ ENCODE(endian) {
     uint64_t v = htobe64(integers[i]);
     memcpy(buffer + i * sizeof(v), &v, sizeof(v));
   }
+  encoded_length = integer_count * sizeof(*integers);
 }
 
 DECODE(endian) {
@@ -182,6 +187,7 @@ ENCODE(highbitbe) {
     }
     *c++ = v & 0x7f;
   }
+  encoded_length = c - buffer;
 }
 
 DECODE(highbitbe) {
@@ -210,6 +216,7 @@ ENCODE(highbitle) {
     }
     ++c;
   }
+  encoded_length = c - buffer;
 }
 
 DECODE(highbitle) {
@@ -243,6 +250,7 @@ ENCODE(quic) {
       c += 8;
     }
   }
+  encoded_length = c - buffer;
 }
 
 DECODE(quic) {
@@ -274,12 +282,13 @@ DECODE(quic) {
     uint32_t enc = measure_encode_##_name();                                   \
     uint32_t dec = measure_decode_##_name();                                   \
     validate(#_name);                                                          \
-    printf("%-12s\t%8" PRIu32 "\t%8" PRIu32 "\n", #_name ":", enc, dec);       \
+    printf("%-12s\t%8" PRIu32 "\t%8" PRIu32 "\t%8zd\n", #_name ":", enc, dec,  \
+           encoded_length);                                                    \
   } while (0)
 
 void usage(const char *n) {
-  fprintf(stderr, "Usage: %s [t|r|c] [#integers=%zd] [#iterations=%zd]\n",
-          n, integer_count, iterations);
+  fprintf(stderr, "Usage: %s [t|r|c] [#integers=%zd] [#iterations=%zd]\n", n,
+          integer_count, iterations);
   exit(2);
 }
 
@@ -323,7 +332,7 @@ int main(int argc, char **argv) {
   benchmark_floor = measure_calibrate();
   printf("Encoding and decoding %zd integers over %zd iterations\n",
          integer_count, iterations);
-  printf("--- Type ---\t Encode \t Decode\n");
+  printf("--- Type ---\t Encode \t Decode \t Length\n");
   BENCHMARK(memcpy);
   BENCHMARK(endian);
   BENCHMARK(highbitbe);
